@@ -8,6 +8,9 @@ import BlockLimbo from "./blocks/BlockLimbo"
 import BlockAxe from "./blocks/BlockAxe"
 import BlockEnd from "./blocks/BlockEnd"
 
+// components
+import Bounds from "./components/Bounds"
+
 export default function Level({
   count = 5,
   types = [BlockSpinner, BlockAxe, BlockLimbo],
@@ -42,7 +45,32 @@ export default function Level({
         geometry={boxGeometry}
         material={floor1Material}
       />
-      {/* <BlockSpinner
+
+      {blocks.map((Block, index) => {
+        return (
+          <Block
+            key={index}
+            position={[0, 0, -(index + 1) * 4]}
+            geometry={boxGeometry}
+            material={floor2Material}
+            obstacleMaterial={obstacleMaterial}
+          />
+        )
+      })}
+
+      <BlockEnd
+        position={[0, 0, -(count + 1) * 4]}
+        geometry={boxGeometry}
+        material={floor1Material}
+      />
+      <Bounds
+        length={count + 2}
+        geometry={boxGeometry}
+        material={wallMaterial}
+      />
+
+      {/* 
+      <BlockSpinner
         position={[0, 0, 12]}
         material={floor2Material}
         geometry={boxGeometry}
@@ -60,11 +88,7 @@ export default function Level({
         geometry={boxGeometry}
         obstacleMaterial={obstacleMaterial}
       />
-      <BlockEnd
-        position={[0, 0, 0]}
-        geometry={boxGeometry}
-        material={floor1Material}
-      /> */}
+      */}
     </>
   )
 }
