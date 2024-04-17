@@ -4,6 +4,8 @@ import { useKeyboardControls } from "@react-three/drei"
 import { useState, useEffect, useRef } from "react"
 import * as THREE from "three"
 
+import useGame from "../stores/useGame"
+
 export default function Player() {
   const ballRef = useRef()
   const [subscribeKeys, getKeys] = useKeyboardControls()
@@ -13,36 +15,70 @@ export default function Player() {
   const [smoothedCameraPosition] = useState(() => new THREE.Vector3(10, 10, 10))
   const [smoothedCameraTarget] = useState(() => new THREE.Vector3())
 
+  // PHASES
+  const start = useGame((state) => state.start)
+  const end = useGame((state) => state.end)
+  const blocksCount = useGame((state) => state.blocksCount)
+  const restart = useGame((state) => state.restart)
+
+  // TELL IF BALL IS JUMPING
+  const jump = () => {
+    const origin = ballRef.current.translation()
+    origin.y -= 0.31
+    const direction = { x: 0, y: -1, z: 0 }
+    const ray = new rapier.Ray(origin, direction)
+    const hit = world.castRay(ray, 10, true)
+
+    // if WE ARE ON THE FLOOR WE CAN JUMP, IF WE ARE NOT WE CAN'T
+    if (hit.toi < 0.15) {
+      ballRef.current.applyImpulse({ x: 0, y: 0.5, z: 0 })
+    }
+  }
+
+  // RESET BALL
+  const reset = () => {
+    ballRef.current.setTranslation({ x: 0, y: 1, z: 0 })
+    // RESET VELOCITY
+    ballRef.current.setLinvel({ x: 0, y: 0, z: 0 })
+    ballRef.current.setAngvel({ x: 0, y: 0, z: 0 })
+  }
+
+  // LISTEN TO KEYBOARD
   useEffect(() => {
+    // WHEN PHASE CHANGES TO END WE RESET
+    const unsubscribeReset = useGame.subscribe(
+      (state) => state.phase,
+      (value) => {
+        if (value === "ready") reset()
+      }
+    )
+
     // listen to changes to keys
     const unsubscribeJump = subscribeKeys(
       (state) => state.jump,
       (value) => {
-        // if we are jumping make the ball jump
-        if (value) {
-          // use a ray to see how high ball is
-          const origin = ballRef.current.translation()
-          // move origin up a bit so it doesn't collide with the ball
-          origin.y += 0.31
-          // point direction at floor
-          const direction = new THREE.Vector3(0, -1, 0)
-          // use ray from rapier to see if there is a collider below
-          const ray = new rapier.Ray(origin, direction)
-          // 10 is the max distance for the ray
-          const hit = world.castRay(ray, 10, true)
-
-          // when jumping prevent additional jumps
-          if (hit.toi < 0.15)
-            ballRef.current.applyImpulse({ x: 0, y: 0.5, z: 0 })
-        }
+        if (value) jump()
       }
     )
 
     return () => {
       // when function is destroyed unsubscribe
       unsubscribeJump()
+      unsubscribeReset()
     }
   }, [subscribeKeys])
+
+  // LISTEN TO GAME MECHANICS
+  useEffect(() => {
+    const unSubToKeys = subscribeKeys(() => {
+      // when we hit a key we start the game
+      start()
+    })
+
+    return () => {
+      unSubToKeys()
+    }
+  }, [])
 
   useFrame((state, delta) => {
     // get keys set in KeyboardControls from index.jsx
@@ -100,6 +136,17 @@ export default function Player() {
     // set camera up vector
     state.camera.position.copy(smoothedCameraPosition)
     state.camera.lookAt(smoothedCameraTarget)
+  })
+
+  // GAME MECHANICS TEST WHERE WE ARE IN THE GAME
+  useFrame((state) => {
+    const ballPosition = ballRef.current.translation()
+
+    // change phase to end
+    if (ballPosition.z < -(blocksCount * 4 + 2)) end()
+
+    // if ball is falling we  restart
+    if (ballPosition.y < -4) restart()
   })
 
   return (
