@@ -14,6 +14,7 @@ import Bounds from "./components/Bounds"
 export default function Level({
   count = 5,
   types = [BlockSpinner, BlockAxe, BlockLimbo],
+  seed = 0,
 }) {
   const boxGeometry = new THREE.BoxGeometry(1, 1, 1)
   const floor1Material = new THREE.MeshStandardMaterial({ color: "limegreen" })
@@ -36,7 +37,7 @@ export default function Level({
     }
 
     return blocks
-  }, [count, types])
+  }, [count, types, seed])
 
   return (
     <>
